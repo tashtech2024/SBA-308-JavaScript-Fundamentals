@@ -1,8 +1,10 @@
 console.log('Lets Go....')
 
-function getLearnerData(course, ag, submissions) {
-  // here, we would process this data to achieve the desired result.
-  const result = [
+
+// const result =[];
+// const currrentDate = new Date(),
+//     {
+  const LearnerSubmissions = [
     {
       id: 125,
       avg: 0.985, // (47 + 150) / (50 + 150)
@@ -17,28 +19,8 @@ function getLearnerData(course, ag, submissions) {
     }
   ];
 
-  return result;
-}
-
-function getLearnerData(course, ag, submissions) {
-  // here, we would process this data to achieve the desired result.
-  const result = [
-    {
-      id: 125,
-      avg: 0.985, // (47 + 150) / (50 + 150)
-      1: 0.94, // 47 / 50
-      2: 1.0 // 150 / 150
-    },
-    {
-      id: 132,
-      avg: 0.82, // (39 + 125) / (50 + 150)
-      1: 0.78, // 39 / 50
-      2: 0.833 // late: (140 - 15) / 150
-    }
-  ];
-
-  return result;
-}
+//   return result;
+// }
 
 
 // The provided course information.
@@ -76,49 +58,54 @@ const AssignmentGroup = {
 };
 
 // The provided learner submission data.
-const LearnerSubmissions = [
-  {
-    learner_id: 125,
-    assignment_id: 1,
-    submission: {
-      submitted_at: "2023-01-25",
-      score: 47
-    }
-  },
-  {
-    learner_id: 125,
-    assignment_id: 2,
-    submission: {
-      submitted_at: "2023-02-12",
-      score: 150
-    }
-  },
-  {
-    learner_id: 125,
-    assignment_id: 3,
-    submission: {
-      submitted_at: "2023-01-25",
-      score: 400
-    }
-  },
-  {
-    learner_id: 132,
-    assignment_id: 1,
-    submission: {
-      submitted_at: "2023-01-24",
-      score: 39
-    }
-  },
-  {
-    learner_id: 132,
-    assignment_id: 2,
-    submission: {
-      submitted_at: "2023-03-07",
-      score: 140
-    }
-  }
-];
+// const LearnerSubmissions = [
+//   {
+//     learner_id: 125,
+//     assignment_id: 1,
+//     submission: {
+//       submitted_at: "2023-01-25",
+//       score: 47
+//     }
+//   },
+//   {
+//     learner_id: 125,
+//     assignment_id: 2,
+//     submission: {
+//       submitted_at: "2023-02-12",
+//       score: 150
+//     }
+//   },
+//   {
+//     learner_id: 125,
+//     assignment_id: 3,
+//     submission: {
+//       submitted_at: "2023-01-25",
+//       score: 400
+//     }
+//   },
+//   {
+//     learner_id: 132,
+//     assignment_id: 1,
+//     submission: {
+//       submitted_at: "2023-01-24",
+//       score: 39
+//     }
+//   },
+//   {
+//     learner_id: 132,
+//     assignment_id: 2,
+//     submission: {
+//       submitted_at: "2023-03-07",
+//       score: 140
+//     }
+//   }
+// ];
 
+function getLearnerData(course, ag, submissions) {
+  // here, we would process this data to achieve the desired result.
+  if(AssignmentGroup.course_id !== course){
+    throw new error('Assigment group course ID does not watch the course info ID"');
+  }
 
 const result = getLearnerData(CourseInfo, AssignmentGroup, LearnerSubmissions);
 
@@ -128,7 +115,7 @@ console.log(result);
 // the ID of the learner for which this data has been collected
 // "id": number,
 function getLearnerId(learnerArray) {
-  let tempArray = learnerArray.ap((obj) => obj["learner_id"])
+  let tempArray = learnerArray.map((obj) => obj["learner_id"])
   let idArray = [];
   tempArray.forEach((num) => {
     if (idArray.indexOf(num) == -1) {
@@ -141,3 +128,58 @@ function getLearnerId(learnerArray) {
 function checkDueDate(assignmentData){
   
 }
+console.log(getLearnerData);
+// the learner’s total, weighted average, in which assignments
+ // with more points_possible should be counted for more
+ // e.g. a learner with 50/100 on one assignment and 190/200 on another
+ // would have a weighted average score of 240/300 = 80%.
+ const results = [];
+    const currentData = new Date();
+
+    LearnerSubmissions.forEach(submission => {
+        const assignment = AssignmentGroup.assignments.find(a => a.id === submission.assignment_id);
+        if(!assignment) {
+            throw new Error(`No assignment found with ID ${submission.assignment_id}`);
+        }
+
+        const dueDate = new Date(assignment.due_at);
+        if(dueDate > currentData){
+            return;
+        }
+
+        const submittedDate = new Date(submission.submission.submitted_at);
+        let finalScore = submission.submission.score;
+        if(submittedDate > dueDate) {
+            finalScore -=assignment.points_possible * 0.1; // Deduct 10% for late submission
+        }
+
+        const percentageScore = calculatePercentage(finalScore, assignment.points_possible);
+
+        let learnerResult = results.find(r => r.id === submission.learner_id);
+        if(!learnerResult){
+            learnerResult = {id: submission.learner_id, avg: 0, scores: {}};
+            results.push(learnerResult);
+        }
+
+        learnerResult.scores[submission.assignment_id] = percentageScore;
+    });
+
+
+    results.forEach(result => {
+        const totalWeightedScore = Object.keys(result.scores).reduce((acc, key) => {
+            const assignment = AssignmentGroup.assignments.find(a => a.id === parseInt(key));
+            return acc + (result.scores[key] * (assignment.points_possible/100))
+        }, 0);
+
+        const totalPoints = AssignmentGroup.assignments.reduce((acc, a) => acc + a.points_possible, 0);
+        result.avg = calculatePercentage(totalWeightedScore, totalPoints);
+    });
+  }
+        // each assignment should have a key with its ID,
+    // and the value associated with it should be the percentage that
+    // the learner scored on the assignment (submission.score / points_possible)
+
+        // if an assignment is not yet due, it should not be included in either
+    // the average or the keyed dictionary of scores
+
+
